@@ -1,4 +1,5 @@
 import json
+import platform
 import time
 
 import selenium.webdriver as webdriver
@@ -30,9 +31,10 @@ class WebDriver:
         user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36'
         options.add_argument(f'user-agent={user_agent}')
 
-        driver = webdriver.Chrome('./chromedriver.exe', chrome_options=options)
+        if platform.system() == 'Windows':
+            return webdriver.Chrome('./chromedriver.exe', chrome_options=options)
 
-        return driver
+        return webdriver.Chrome('./chromedriver', chrome_options=options)
 
 
 def wait_element_to_present(driver, delay, element):
@@ -47,9 +49,11 @@ def main():
     driver = WebDriver.chrome()
 
     try:
-        driver.get('https://weibo.com/login.php')
+        driver.get('https://weibo.com/login.php')  # login
 
         wait_element_to_present(driver, 60, (By.ID, 'v6_pl_rightmod_myinfo'))
+
+        driver.get('https://weibo.com/p/100808c58cd9e27740c6aae77baa96d6538cab/super_index')
 
         inputs = driver.find_elements_by_class_name('W_input')
         post_input = inputs[1]
