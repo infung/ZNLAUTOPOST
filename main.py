@@ -1,9 +1,11 @@
 import json
 import platform
 import time
+import traceback
 
 import selenium.webdriver as webdriver
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -50,10 +52,11 @@ def main():
 
     try:
         driver.get('https://weibo.com/login.php')  # login
-
-        wait_element_to_present(driver, 60, (By.ID, 'v6_pl_rightmod_myinfo'))
+        wait_element_to_present(driver, 300, (By.ID, 'v6_pl_rightmod_myinfo'))
 
         driver.get('https://weibo.com/p/100808c58cd9e27740c6aae77baa96d6538cab/super_index')
+        wait_element_to_present(driver, 30, (By.ID, 'Pl_Third_Inline__260'))
+        time.sleep(3)  # avoid flakiness on page load
 
         inputs = driver.find_elements_by_class_name('W_input')
         post_input = inputs[1]
@@ -64,8 +67,14 @@ def main():
         with open('./input.json') as f:
             data_list = json.load(f)
             for data in data_list:
+                actions = ActionChains(driver)
+                actions.move_to_element(post_input).double_click()  # mimic mouse down event
                 post_input.send_keys(data['text'])
+                post_input.click()
 
+                time.sleep(3)  # wait element to be inserted to DOM
+
+                driver.find_element_by_xpath('//a[@action-type="multiimage"]').click()
                 driver.find_element_by_xpath("//input[contains(@id, 'swf_upbtn')]").send_keys(data['image'])
                 time.sleep(5)  # mandatory sleep, wait for file preview
 
@@ -73,6 +82,7 @@ def main():
                 time.sleep(5)  # mandatory sleep, wait for upload
     except Exception as e:
         print(e)
+        traceback.print_exc()
         driver.close()
 
 
