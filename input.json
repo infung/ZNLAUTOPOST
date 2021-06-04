@@ -1,14 +1,4 @@
-[
-  {
-    "text": "test automation 1",
-    "image": "C:\\Users\\Anthony\\AndroidStudioProjects\\otcpay\\icons\\About OTCPAY.png"
-  },
-  {
-    "text": "test automation 2",
-    "image": "C:\\Users\\Anthony\\AndroidStudioProjects\\otcpay\\icons\\About OTCPAY.png"
-  },
-  {
-    "text": "test automation 3",
-    "image": "C:\\Users\\Anthony\\AndroidStudioProjects\\otcpay\\icons\\About OTCPAY.png"
-  }
-]
+{
+  "numOfPosts": 40,
+  "imageFolderPath": "~/Desktop/weibo/weibopost/image"
+}

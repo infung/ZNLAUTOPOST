@@ -1,7 +1,7 @@
 import json
 import platform
 import time
-
+import random
 import selenium.webdriver as webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
@@ -36,14 +36,20 @@ class WebDriver:
 
         return webdriver.Chrome('./chromedriver', chrome_options=options)
 
-
 def wait_element_to_present(driver, delay, element):
     try:
         element = WebDriverWait(driver, delay).until(EC.presence_of_element_located(element))
         print('page ready')
     except TimeoutException:
-        print('fked up here')
+        print('login failed!')
 
+def generateZNLText(content):
+    try:
+        randomNum = str(random.randint(0,888888)) if content['withRandNum'] else ''
+        znlText = content['tags1'] + random.choice(content['emoji']) + content['tags2'] + "\n" + random.choice(content['znlText']) + random.choice(content['emoji']) + random.choice(content['emoji']) + "\n" + random.choice(content['exText']) + ' 伯远' + random.choice(content['emoji']) + random.choice(content['emoji']) + ' ' + randomNum + "\n@INTO1-伯远 \n"
+        return znlText
+    except Exception as e:
+        print(e)
 
 def main():
     driver = WebDriver.chrome()
@@ -51,7 +57,7 @@ def main():
     try:
         driver.get('https://weibo.com/login.php')  # login
 
-        wait_element_to_present(driver, 60, (By.ID, 'v6_pl_rightmod_myinfo'))
+        wait_element_to_present(driver, 300, (By.ID, 'v6_pl_rightmod_myinfo'))
 
         driver.get('https://weibo.com/p/100808c58cd9e27740c6aae77baa96d6538cab/super_index')
 
@@ -61,14 +67,30 @@ def main():
         buttons = driver.find_elements_by_class_name('W_btn_a')
         post_button = buttons[0]
 
-        with open('./input.json') as f:
-            data_list = json.load(f)
-            for data in data_list:
-                post_input.send_keys(data['text'])
+        ############default var################
+        numOfPosts = 20
+        imageFolderPath = ''
 
-                driver.find_element_by_xpath("//input[contains(@id, 'swf_upbtn')]").send_keys(data['image'])
-                time.sleep(5)  # mandatory sleep, wait for file preview
+        with open('./input.json') as info:
+            data_info = json.load(info)
+            numOfPosts = data_info['numOfPosts']
+            imageFolderPath = data_info['imageFolderPath']
 
+        with open('./content.json') as content:
+            data_content = json.load(content)
+            #send n posts loop############################
+            for i in range(numOfPosts):
+                #set post text
+                wb_text = generateZNLText(data_content)
+                post_input.send_keys(wb_text)
+                #upload image to the post
+                if imageFolderPath.strip() != '':
+                    randint = random.randint(1,10) 
+                    imagePath = imageFolderPath + '/' + str(randint) + '.jpg'
+                    #####################需要修改！####################
+                    driver.find_element_by_xpath("//input[contains(@id, 'swf_upbtn')]").send_keys(imagePath)
+                    time.sleep(5)  # mandatory sleep, wait for file preview
+                #send post
                 post_button.click()
                 time.sleep(5)  # mandatory sleep, wait for upload
     except Exception as e:
