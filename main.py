@@ -141,7 +141,7 @@ def main():
 
                 # upload image to the post
                 if image_folder_path.strip() != '':
-                    randint = random.randint(0, 9)
+                    randint = random.randint(1, 10)
                     image_path = image_folder_path + get_os_path() + str(randint) + '.jpg'
                     logging.info('Sending image' + str(randint) + '.jpg')
 
@@ -150,7 +150,7 @@ def main():
                     logging.info('Image upload button toggled')
                     time.sleep(1)
 
-                    driver.find_element_by_xpath('//input[contains(@id, 'swf_upbtn')]').send_keys(image_path)
+                    driver.find_element_by_xpath('//input[contains(@id, "swf_upbtn")]').send_keys(image_path)
                     logging.info('Image uploaded')
                     time.sleep(5)  # mandatory sleep, wait for file preview
 
