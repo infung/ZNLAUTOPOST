@@ -1,2 +1,6 @@
 # Default ignored files
 .idea
+dist
+build
+*.spec
+__pycache__

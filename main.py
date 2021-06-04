@@ -1,3 +1,5 @@
+import os
+import sys
 import json
 import platform
 import time
@@ -13,6 +15,15 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 
 class WebDriver:
+    @staticmethod
+    def resource_path(relative_path: str) -> str:
+        try:
+            base_path = sys._MEIPASS
+        except Exception:
+            base_path = os.path.dirname(__file__)
+
+        return os.path.join(base_path, relative_path)
+
     @staticmethod
     def chrome():
         options = Options()
@@ -34,14 +45,14 @@ class WebDriver:
         options.add_argument(f'user-agent={user_agent}')
 
         if platform.system() == 'Windows':
-            return webdriver.Chrome('./chromedriver.exe', chrome_options=options)
+            return webdriver.Chrome(WebDriver.resource_path('chromedriver.exe'), chrome_options=options)
 
-        return webdriver.Chrome('./chromedriver', chrome_options=options)
+        return webdriver.Chrome(WebDriver.resource_path('chromedriver'), chrome_options=options)
 
 
 def wait_element_to_present(driver, delay, element):
     try:
-        element = WebDriverWait(driver, delay).until(EC.presence_of_element_located(element))
+        WebDriverWait(driver, delay).until(EC.presence_of_element_located(element))
         print('page ready')
     except TimeoutException:
         print('fked up here')
