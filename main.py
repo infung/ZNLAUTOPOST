@@ -34,17 +34,17 @@ class WebDriver:
     @staticmethod
     def chrome():
         options = Options()
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-infobars")
-        options.add_argument("--disable-extensions")
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-infobars')
+        options.add_argument('--disable-extensions')
         # change windows size if too large
-        options.add_argument("--window-size=1280,720")
+        options.add_argument('--window-size=1280,720')
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument('--ignore-certificate-errors')
         options.add_argument('--allow-running-insecure-content')
         # to disable dumbass notification
-        options.add_experimental_option("prefs",
-                                        {"profile.default_content_setting_values.notifications": 2
+        options.add_experimental_option('prefs',
+                                        {'profile.default_content_setting_values.notifications': 2
                                          })
 
         # To unblock website that blocks headless chrome
@@ -61,7 +61,8 @@ class WebDriver:
 
 def wait_element_to_present(driver, delay, element):
     try:
-        WebDriverWait(driver, delay).until(EC.presence_of_element_located(element))
+        WebDriverWait(driver, delay).until(
+            EC.presence_of_element_located(element))
     except TimeoutException:
         logging.exception('Failed to wait element within ' + str(delay) + 's')
 
@@ -76,17 +77,18 @@ def get_os_path():
 def generate_znl_text(content):
     znl_text = ''
     try:
-        random_num = str(random.randint(0, 888888)) if content['withRandNum'] else ''
+        random_num = str(random.randint(0, 888888)
+                         ) if content['withRandNum'] else ''
         znl_text = (content['tags1'] +
                     random.choice(content['emoji']) +
-                    content['tags2'] + "\n" +
+                    content['tags2'] + '\n' +
                     random.choice(content['znlText']) +
                     random.choice(content['emoji']) +
-                    random.choice(content['emoji']) + "\n" +
+                    random.choice(content['emoji']) + '\n' +
                     random.choice(content['exText']) + ' 伯远' +
                     random.choice(content['emoji']) +
                     random.choice(content['emoji']) + ' ' +
-                    random_num + "\n@INTO1-伯远 \n")
+                    random_num + '\n@INTO1-伯远 \n')
     except Exception:
         logging.exception('Failed to generate znl text')
     finally:
@@ -101,7 +103,8 @@ def main():
         wait_element_to_present(driver, 300, (By.ID, 'v6_pl_rightmod_myinfo'))
         logging.info('User logged in')
 
-        driver.get('https://weibo.com/p/100808c58cd9e27740c6aae77baa96d6538cab/super_index')
+        driver.get(
+            'https://weibo.com/p/100808c58cd9e27740c6aae77baa96d6538cab/super_index')
         wait_element_to_present(driver, 30, (By.ID, 'Pl_Third_Inline__260'))
         logging.info('Navigated to super page')
         time.sleep(3)  # avoid flakiness on page load
@@ -142,11 +145,12 @@ def main():
                     image_path = image_folder_path + get_os_path() + str(randint) + '.jpg'
                     logging.info('Sending image' + str(randint) + '.jpg')
 
-                    driver.find_element_by_xpath('//a[@action-type="multiimage"]').click()
+                    driver.find_element_by_xpath(
+                        '//a[@action-type="multiimage"]').click()
                     logging.info('Image upload button toggled')
                     time.sleep(1)
 
-                    driver.find_element_by_xpath("//input[contains(@id, 'swf_upbtn')]").send_keys(image_path)
+                    driver.find_element_by_xpath('//input[contains(@id, 'swf_upbtn')]').send_keys(image_path)
                     logging.info('Image uploaded')
                     time.sleep(5)  # mandatory sleep, wait for file preview
 
