@@ -2,8 +2,11 @@ import json
 import platform
 import time
 import random
+import traceback
+
 import selenium.webdriver as webdriver
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -56,10 +59,11 @@ def main():
 
     try:
         driver.get('https://weibo.com/login.php')  # login
-
         wait_element_to_present(driver, 300, (By.ID, 'v6_pl_rightmod_myinfo'))
 
         driver.get('https://weibo.com/p/100808c58cd9e27740c6aae77baa96d6538cab/super_index')
+        wait_element_to_present(driver, 30, (By.ID, 'Pl_Third_Inline__260'))
+        time.sleep(3)  # avoid flakiness on page load
 
         inputs = driver.find_elements_by_class_name('W_input')
         post_input = inputs[1]
@@ -67,7 +71,7 @@ def main():
         buttons = driver.find_elements_by_class_name('W_btn_a')
         post_button = buttons[0]
 
-        ############default var################
+        #default var
         numOfPosts = 20
         imageFolderPath = ''
 
@@ -78,16 +82,26 @@ def main():
 
         with open('./content.json') as content:
             data_content = json.load(content)
-            #send n posts loop############################
+            #send n posts loop
             for i in range(numOfPosts):
                 #set post text
                 wb_text = generateZNLText(data_content)
+
+                actions = ActionChains(driver)
+                actions.move_to_element(post_input).double_click() 
                 post_input.send_keys(wb_text)
+                post_input.click()
+
+                time.sleep(3)  # wait element to be inserted to DOM
+
                 #upload image to the post
                 if imageFolderPath.strip() != '':
                     randint = random.randint(1,10) 
                     imagePath = imageFolderPath + '/' + str(randint) + '.jpg'
-                    #####################需要修改！####################
+
+                    driver.find_element_by_xpath('//a[@action-type="multiimage"]').click()
+                    time.sleep(1)
+
                     driver.find_element_by_xpath("//input[contains(@id, 'swf_upbtn')]").send_keys(imagePath)
                     time.sleep(5)  # mandatory sleep, wait for file preview
                 #send post
@@ -95,6 +109,7 @@ def main():
                 time.sleep(5)  # mandatory sleep, wait for upload
     except Exception as e:
         print(e)
+        traceback.print_exc()
         driver.close()
 
 
