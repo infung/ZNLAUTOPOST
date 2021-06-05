@@ -117,10 +117,12 @@ def main():
         logging.info('User logged in')
         logging.info('--- %s seconds used on login ---' % (time.time() - login_start_time))
 
+        navigate_start_time = time.time()
         driver.get(
             'https://weibo.com/p/100808c58cd9e27740c6aae77baa96d6538cab/super_index')
         wait_element_to_present(driver, 30, (By.ID, 'Pl_Third_Inline__260'))
         logging.info('Navigated to super page')
+        logging.info('--- %s seconds used on navigating to super page ---' % (time.time() - navigate_start_time))
         time.sleep(3)  # avoid flakiness on page load
 
         inputs = driver.find_elements_by_class_name('W_input')
@@ -131,17 +133,23 @@ def main():
 
         with open('input.json', encoding='utf8') as info:
             data_info = json.load(info)
+            logging.info('Input config ingested')
+
             num_of_posts = data_info['numOfPosts']
             image_folder_path = data_info['imageFolderPath']
-            logging.info('Input config ingested')
+            image_upload_enabled = image_folder_path.strip() != ''
+            if not image_upload_enabled:
+                logging.info('Fast mode enabled')
+            else:
+                logging.info('Normal mode enabled')
 
         with open('content.json', encoding='utf8') as content:
             data_content = json.load(content)
-            logging.info('Content ingested')
+            logging.info('Content ingested, start posting ' + str(num_of_posts) + ' blog')
 
             # send n posts loop
             for i in range(num_of_posts):
-                logging.info('Posting No.' + str(i) + ' blog')
+                logging.info('Posting No.' + str(i + 1) + ' blog')
 
                 # set post text
                 wb_text = generate_znl_text(data_content)
@@ -154,7 +162,7 @@ def main():
                 time.sleep(2)  # wait element to be inserted to DOM
 
                 # upload image to the post
-                if image_folder_path.strip() != '':
+                if image_upload_enabled:
                     randint = random.randint(1, 10)
                     image_path = image_folder_path + get_os_path() + str(randint) + '.jpg'
                     logging.info('Sending image' + str(randint) + '.jpg')
@@ -192,8 +200,12 @@ def main():
                     logging.debug('Overlay element cannot be found')
                     pass
     except Exception:
-        logging.exception('Unknown exception')
-        driver.close()
+        try:
+            logging.exception('Unknown exception')
+        except Exception:
+            pass
+
+        time.sleep(10000)  # TODO:  change it to driver.close() later
     finally:
         logging.info('--- %s seconds used ---' % (time.time() - start_time))
 
