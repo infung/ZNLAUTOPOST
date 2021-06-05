@@ -7,7 +7,7 @@ import sys
 import time
 
 import selenium.webdriver as webdriver
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -16,7 +16,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)s: %(message)s',
-                    datefmt='%Y%m%d %H:%M:%S',
+                    datefmt='%Y-%m-%d %H:%M:%S',
                     filename='runtime.log',
                     filemode='w')
 
@@ -95,13 +95,27 @@ def generate_znl_text(content):
         return znl_text
 
 
+def post(post_button, driver):
+    try:
+        post_button.click()  # send post
+        logging.info('Post uploaded')
+        time.sleep(5)  # mandatory sleep, wait for upload
+    except ElementClickInterceptedException:
+        logging.exception(
+            'strange overlay element found, refreshing page to resume')
+        driver.refresh()
+
+
 def main():
+    start_time = time.time()
     driver = WebDriver.chrome()
 
     try:
+        login_start_time = time.time()
         driver.get('https://weibo.com/login.php')  # login
         wait_element_to_present(driver, 300, (By.ID, 'v6_pl_rightmod_myinfo'))
         logging.info('User logged in')
+        logging.info('--- %s seconds used on login ---' % (time.time() - login_start_time))
 
         driver.get(
             'https://weibo.com/p/100808c58cd9e27740c6aae77baa96d6538cab/super_index')
@@ -127,7 +141,7 @@ def main():
 
             # send n posts loop
             for i in range(num_of_posts):
-                logging.info('Posting No.' + str(i) + 'blog')
+                logging.info('Posting No.' + str(i) + ' blog')
 
                 # set post text
                 wb_text = generate_znl_text(data_content)
@@ -150,16 +164,38 @@ def main():
                     logging.info('Image upload button toggled')
                     time.sleep(1)
 
-                    driver.find_element_by_xpath('//input[contains(@id, "swf_upbtn")]').send_keys(image_path)
+                    driver.find_element_by_xpath(
+                        '//input[contains(@id, "swf_upbtn")]').send_keys(image_path)
                     logging.info('Image uploaded')
-                    time.sleep(5)  # mandatory sleep, wait for file preview
+                    time.sleep(3)  # mandatory sleep, wait for file preview
 
-                post_button.click()  # send post
-                logging.info('Post uploaded')
-                time.sleep(5)  # mandatory sleep, wait for upload
+                post(post_button, driver)  # first attempt
+
+                try:
+                    # handle popup
+                    pop_up = driver.find_element_by_xpath(
+                        '//div[contains(@id, "layer_")]')
+                    if pop_up:
+                        logging.info('Overlay found, will try to dismiss it')
+                        button = driver.find_element_by_xpath(
+                            '//a[@action-type="ok"]')
+                        if button:
+                            logging.info(
+                                'Dismiss button found, will try click it')
+                            button.click()  # wait for animation fade out
+                            logging.info(
+                                'Dismiss button clicked, waiting animation')
+                            time.sleep(2)
+
+                            post(post_button, driver)  # second attempt after pop up gone
+                except NoSuchElementException:
+                    logging.debug('Overlay element cannot be found')
+                    pass
     except Exception:
         logging.exception('Unknown exception')
         driver.close()
+    finally:
+        logging.info('--- %s seconds used ---' % (time.time() - start_time))
 
 
 # Press the green button in the gutter to run the script.
