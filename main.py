@@ -65,6 +65,8 @@ def wait_element_to_present(driver, delay, element):
             EC.presence_of_element_located(element))
     except TimeoutException:
         logging.exception('Failed to wait element within ' + str(delay) + 's')
+        driver.save_screenshot(str(time.time()) + '.png')
+        driver.close()
 
 
 def get_os_path():
@@ -103,6 +105,7 @@ def post(post_button, driver):
     except ElementClickInterceptedException:
         logging.exception(
             'strange overlay element found, refreshing page to resume')
+        driver.save_screenshot(str(time.time()) + '.png')
         driver.close()
 
 
@@ -122,6 +125,13 @@ def handle_pop_up(driver, post_button):
             '//div[contains(@id, "layer_")]')
         if pop_up:
             logging.info('Overlay found, will try to dismiss it')
+
+            titles = driver.find_elements_by_class_name('S_txt1')
+            popup_title = titles[len(titles) - 1]
+            if popup_title.text == '需要验证码':
+                logging.error('Account locked')
+                driver.close()
+
             button = driver.find_element_by_xpath(
                 '//a[@action-type="ok"]')
             if button:
@@ -146,30 +156,32 @@ def main():
         login_start_time = time.time()
         driver.get('https://weibo.com/login.php')  # login
         wait_element_to_present(driver, 300, (By.ID, 'v6_pl_rightmod_myinfo'))
-        logging.info('User logged in')
-        logging.info('--- %s seconds used on login ---' % (time.time() - login_start_time))
+        logging.info('--- %s seconds used on login ---' %
+                     (time.time() - login_start_time))
 
         navigate_start_time = time.time()
 
-        superTopic = 'https://weibo.com/p/100808c58cd9e27740c6aae77baa96d6538cab/super_index'
-
         with open('input.json', encoding='utf8') as info:
-            data_info = json.load(info)
-            logging.info('Input config ingested')
+            try:
+                data_info = json.load(info)
+                logging.info('Input config ingested')
+            except ValueError:
+                logging.exception('Failed to parse input.json')
+                driver.close()
 
             num_of_posts = data_info['numOfPosts']
             image_folder_path = data_info['imageFolderPath']
             image_upload_enabled = image_folder_path.strip() != ''
-            superTopic = data_info['superTopic']
+            super_topic = data_info['superTopic']
             if not image_upload_enabled:
                 logging.info('Fast mode enabled')
             else:
                 logging.info('Normal mode enabled')
-        
-        driver.get(superTopic)
+
+        driver.get(super_topic)
         wait_element_to_present(driver, 30, (By.ID, 'Pl_Third_Inline__260'))
-        logging.info('Navigated to super page')
-        logging.info('--- %s seconds used on navigating to super page ---' % (time.time() - navigate_start_time))
+        logging.info('--- %s seconds used on navigating to super page ---' %
+                     (time.time() - navigate_start_time))
         time.sleep(3)  # avoid flakiness on page load
 
         inputs = driver.find_elements_by_class_name('W_input')
@@ -179,8 +191,13 @@ def main():
         post_button = buttons[0]
 
         with open('content.json', encoding='utf8') as content:
-            data_content = json.load(content)
-            logging.info('Content ingested, start posting ' + str(num_of_posts) + ' blog')
+            try:
+                data_content = json.load(content)
+                logging.info('Content ingested, start posting ' +
+                             str(num_of_posts) + ' blog')
+            except ValueError:
+                logging.exception('Failed to parse content.json')
+                driver.close()
 
             # send n posts loop
             for i in range(num_of_posts):
@@ -220,10 +237,11 @@ def main():
     except Exception:
         try:
             logging.exception('Unknown exception')
+            driver.save_screenshot(str(time.time()) + '.png')
         except Exception:
             pass
 
-        time.sleep(10000)  # TODO:  change it to driver.close() later
+        driver.close()
     finally:
         logging.info('--- %s seconds used ---' % (time.time() - start_time))
 
