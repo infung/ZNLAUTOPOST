@@ -161,7 +161,7 @@ def main():
 
         navigate_start_time = time.time()
 
-        with open('input.json', encoding='utf8') as info:
+        with open(WebDriver.resource_path('input.json'), encoding='utf8') as info:
             try:
                 data_info = json.load(info)
                 logging.info('Input config ingested')
@@ -190,7 +190,7 @@ def main():
         buttons = driver.find_elements_by_class_name('W_btn_a')
         post_button = buttons[0]
 
-        with open('content.json', encoding='utf8') as content:
+        with open(WebDriver.resource_path('content.json'), encoding='utf8') as content:
             try:
                 data_content = json.load(content)
                 logging.info('Content ingested, start posting ' +
