@@ -67,7 +67,7 @@ def wait_element_to_present(driver, delay, element):
         logging.exception('Failed to wait element within ' + str(delay) + 's')
         driver.save_screenshot(str(time.time()) + '.png')
         driver.close()
-        quit()
+        sys.exit()
 
 
 def get_os_path():
@@ -108,7 +108,7 @@ def post(post_button, driver):
             'strange overlay element found, refreshing page to resume')
         driver.save_screenshot(str(time.time()) + '.png')
         driver.close()
-        quit()
+        sys.exit()
 
 
 def set_text(data_content, driver, post_input):
@@ -133,7 +133,7 @@ def handle_pop_up(driver, post_button):
             if popup_title.text == '需要验证码':
                 logging.error('Account locked')
                 driver.close()
-                quit()
+                sys.exit()
 
             button = driver.find_element_by_xpath(
                 '//a[@action-type="ok"]')
@@ -171,7 +171,7 @@ def main():
             except ValueError:
                 logging.exception('Failed to parse input.json')
                 driver.close()
-                quit()
+                sys.exit()
 
             num_of_posts = data_info['numOfPosts']
             image_folder_path = data_info['imageFolderPath']
@@ -202,7 +202,7 @@ def main():
             except ValueError:
                 logging.exception('Failed to parse content.json')
                 driver.close()
-                quit()
+                sys.exit()
 
             # send n posts loop
             for i in range(num_of_posts):
