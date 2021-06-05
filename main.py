@@ -111,9 +111,11 @@ def main():
     driver = WebDriver.chrome()
 
     try:
+        login_start_time = time.time()
         driver.get('https://weibo.com/login.php')  # login
         wait_element_to_present(driver, 300, (By.ID, 'v6_pl_rightmod_myinfo'))
         logging.info('User logged in')
+        logging.info('--- %s seconds used on login ---' % (time.time() - login_start_time))
 
         driver.get(
             'https://weibo.com/p/100808c58cd9e27740c6aae77baa96d6538cab/super_index')
