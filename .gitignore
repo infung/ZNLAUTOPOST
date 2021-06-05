@@ -2,9 +2,9 @@
 .idea
 dist
 build
-*.spec
 __pycache__
 image
+
 .DS_Store
 *.log
-test.json
+test.*
