@@ -103,7 +103,39 @@ def post(post_button, driver):
     except ElementClickInterceptedException:
         logging.exception(
             'strange overlay element found, refreshing page to resume')
-        driver.refresh()
+        driver.close()
+
+
+def set_text(data_content, driver, post_input):
+    # set post text
+    wb_text = generate_znl_text(data_content)
+    actions = ActionChains(driver)
+    actions.move_to_element(post_input).double_click()
+    post_input.clear()
+    post_input.send_keys(wb_text)
+
+
+def handle_pop_up(driver, post_button):
+    try:
+        # handle popup
+        pop_up = driver.find_element_by_xpath(
+            '//div[contains(@id, "layer_")]')
+        if pop_up:
+            logging.info('Overlay found, will try to dismiss it')
+            button = driver.find_element_by_xpath(
+                '//a[@action-type="ok"]')
+            if button:
+                logging.info(
+                    'Dismiss button found, will try click it')
+                button.click()  # wait for animation fade out
+                logging.info(
+                    'Dismiss button clicked, waiting animation')
+                time.sleep(2)
+
+                post(post_button, driver)  # second attempt after pop up gone
+    except NoSuchElementException:
+        logging.debug('Overlay element cannot be found')
+        pass
 
 
 def main():
@@ -118,8 +150,23 @@ def main():
         logging.info('--- %s seconds used on login ---' % (time.time() - login_start_time))
 
         navigate_start_time = time.time()
-        driver.get(
-            'https://weibo.com/p/100808c58cd9e27740c6aae77baa96d6538cab/super_index')
+
+        superTopic = 'https://weibo.com/p/100808c58cd9e27740c6aae77baa96d6538cab/super_index'
+
+        with open('input.json', encoding='utf8') as info:
+            data_info = json.load(info)
+            logging.info('Input config ingested')
+
+            num_of_posts = data_info['numOfPosts']
+            image_folder_path = data_info['imageFolderPath']
+            image_upload_enabled = image_folder_path.strip() != ''
+            superTopic = data_info['superTopic']
+            if not image_upload_enabled:
+                logging.info('Fast mode enabled')
+            else:
+                logging.info('Normal mode enabled')
+        
+        driver.get(superTopic)
         wait_element_to_present(driver, 30, (By.ID, 'Pl_Third_Inline__260'))
         logging.info('Navigated to super page')
         logging.info('--- %s seconds used on navigating to super page ---' % (time.time() - navigate_start_time))
@@ -131,18 +178,6 @@ def main():
         buttons = driver.find_elements_by_class_name('W_btn_a')
         post_button = buttons[0]
 
-        with open('input.json', encoding='utf8') as info:
-            data_info = json.load(info)
-            logging.info('Input config ingested')
-
-            num_of_posts = data_info['numOfPosts']
-            image_folder_path = data_info['imageFolderPath']
-            image_upload_enabled = image_folder_path.strip() != ''
-            if not image_upload_enabled:
-                logging.info('Fast mode enabled')
-            else:
-                logging.info('Normal mode enabled')
-
         with open('content.json', encoding='utf8') as content:
             data_content = json.load(content)
             logging.info('Content ingested, start posting ' + str(num_of_posts) + ' blog')
@@ -151,12 +186,15 @@ def main():
             for i in range(num_of_posts):
                 logging.info('Posting No.' + str(i + 1) + ' blog')
 
-                # set post text
-                wb_text = generate_znl_text(data_content)
-                actions = ActionChains(driver)
-                actions.move_to_element(post_input).double_click()
-                post_input.send_keys(wb_text)
-                post_input.click()
+                set_text(data_content, driver, post_input)
+
+                try:
+                    post_input.click()
+                except ElementClickInterceptedException:
+                    # in case any overlay found, dismiss and reset text
+                    handle_pop_up(driver, post_button)
+                    set_text(data_content, driver, post_input)
+                    post_input.click()
 
                 logging.info('Finished setting text')
                 time.sleep(2)  # wait element to be inserted to DOM
@@ -178,27 +216,7 @@ def main():
                     time.sleep(3)  # mandatory sleep, wait for file preview
 
                 post(post_button, driver)  # first attempt
-
-                try:
-                    # handle popup
-                    pop_up = driver.find_element_by_xpath(
-                        '//div[contains(@id, "layer_")]')
-                    if pop_up:
-                        logging.info('Overlay found, will try to dismiss it')
-                        button = driver.find_element_by_xpath(
-                            '//a[@action-type="ok"]')
-                        if button:
-                            logging.info(
-                                'Dismiss button found, will try click it')
-                            button.click()  # wait for animation fade out
-                            logging.info(
-                                'Dismiss button clicked, waiting animation')
-                            time.sleep(2)
-
-                            post(post_button, driver)  # second attempt after pop up gone
-                except NoSuchElementException:
-                    logging.debug('Overlay element cannot be found')
-                    pass
+                handle_pop_up(driver, post_button)
     except Exception:
         try:
             logging.exception('Unknown exception')

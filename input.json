@@ -1,4 +1,5 @@
 {
-  "numOfPosts": 30,
-  "imageFolderPath": "/Users/infung/Desktop/weibo/weibopost/image"
+  "numOfPosts": 50,
+  "imageFolderPath": "",
+  "superTopic": "https://weibo.com/p/100808c58cd9e27740c6aae77baa96d6538cab/super_index"
 }
