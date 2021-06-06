@@ -80,7 +80,8 @@ def read_file_with_encoding(filename, encoding):
             logging.info(filename + ' ingested')
             return data
         except ValueError:
-            logging.exception('Failed to parse ' + filename + ' in ' + encoding + ' encoding scheme')
+            logging.exception('Failed to parse ' + filename +
+                              ' in ' + encoding + ' encoding scheme')
 
     return None
 
@@ -225,8 +226,10 @@ def main():
 
             # upload image to the post
             if image_upload_enabled:
-                img_files = os.listdir(image_folder_path)
-                image_path = image_folder_path + get_os_path() + random.choice(img_files)
+                files = os.listdir(image_folder_path)
+                filtered_img_files = [
+                    img for img in files if '.png' in img or '.jpg' in img or '.jpeg' in img]
+                image_path = image_folder_path + get_os_path() + random.choice(filtered_img_files)
                 logging.info('Sending ' + image_path)
 
                 driver.find_element_by_xpath(
