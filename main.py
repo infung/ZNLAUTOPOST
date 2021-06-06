@@ -47,10 +47,6 @@ class WebDriver:
                                         {'profile.default_content_setting_values.notifications': 2
                                          })
 
-        # To unblock website that blocks headless chrome
-        user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36'
-        options.add_argument(f'user-agent={user_agent}')
-
         if platform.system() == 'Windows':
             logging.info('Running on Windows')
             return webdriver.Chrome(WebDriver.resource_path('chromedriver.exe'), chrome_options=options)
@@ -67,7 +63,7 @@ def wait_element_to_present(driver, delay, element):
         logging.exception('Failed to wait element within ' + str(delay) + 's')
         driver.save_screenshot(str(time.time()) + '.png')
         driver.close()
-        sys.exit()
+        sys.exit(1)
 
 
 def get_os_path():
@@ -108,7 +104,7 @@ def post(post_button, driver):
             'strange overlay element found, refreshing page to resume')
         driver.save_screenshot(str(time.time()) + '.png')
         driver.close()
-        sys.exit()
+        sys.exit(1)
 
 
 def set_text(data_content, driver, post_input):
@@ -133,7 +129,7 @@ def handle_pop_up(driver, post_button):
             if popup_title.text == '需要验证码':
                 logging.error('Account locked')
                 driver.close()
-                sys.exit()
+                sys.exit(1)
 
             button = driver.find_element_by_xpath(
                 '//a[@action-type="ok"]')
@@ -152,6 +148,33 @@ def handle_pop_up(driver, post_button):
 
 
 def main():
+    # test config parsing before starting chromedriver
+    with open('input.json', encoding='raw_unicode_escape') as info:
+        try:
+            data_info = json.load(info)
+            logging.info('Input config ingested')
+        except ValueError:
+            logging.exception('Failed to parse input.json')
+            sys.exit(1)
+
+        num_of_posts = data_info['numOfPosts']
+        image_folder_path = data_info['imageFolderPath']
+        image_upload_enabled = image_folder_path.strip() != ''
+        super_topic = data_info['superTopic']
+        if not image_upload_enabled:
+            logging.info('Fast mode enabled')
+        else:
+            logging.info('Normal mode enabled')
+
+    with open('content.json', encoding='raw_unicode_escape') as content:
+        try:
+            data_content = json.load(content)
+            logging.info('Content ingested, start posting ' +
+                         str(num_of_posts) + ' blog')
+        except ValueError:
+            logging.exception('Failed to parse content.json')
+            sys.exit(1)
+
     start_time = time.time()
     driver = WebDriver.chrome()
 
@@ -163,25 +186,6 @@ def main():
                      (time.time() - login_start_time))
 
         navigate_start_time = time.time()
-
-        with open('input.json', encoding='utf8') as info:
-            try:
-                data_info = json.load(info)
-                logging.info('Input config ingested')
-            except ValueError:
-                logging.exception('Failed to parse input.json')
-                driver.close()
-                sys.exit()
-
-            num_of_posts = data_info['numOfPosts']
-            image_folder_path = data_info['imageFolderPath']
-            image_upload_enabled = image_folder_path.strip() != ''
-            super_topic = data_info['superTopic']
-            if not image_upload_enabled:
-                logging.info('Fast mode enabled')
-            else:
-                logging.info('Normal mode enabled')
-
         driver.get(super_topic)
         wait_element_to_present(driver, 30, (By.ID, 'Pl_Third_Inline__260'))
         logging.info('--- %s seconds used on navigating to super page ---' %
@@ -194,51 +198,41 @@ def main():
         buttons = driver.find_elements_by_class_name('W_btn_a')
         post_button = buttons[0]
 
-        with open('content.json', encoding='utf8') as content:
+        # send n posts loop
+        for i in range(num_of_posts):
+            logging.info('Posting No.' + str(i + 1) + ' blog')
+
+            set_text(data_content, driver, post_input)
+
             try:
-                data_content = json.load(content)
-                logging.info('Content ingested, start posting ' +
-                             str(num_of_posts) + ' blog')
-            except ValueError:
-                logging.exception('Failed to parse content.json')
-                driver.close()
-                sys.exit()
-
-            # send n posts loop
-            for i in range(num_of_posts):
-                logging.info('Posting No.' + str(i + 1) + ' blog')
-
-                set_text(data_content, driver, post_input)
-
-                try:
-                    post_input.click()
-                except ElementClickInterceptedException:
-                    # in case any overlay found, dismiss and reset text
-                    handle_pop_up(driver, post_button)
-                    set_text(data_content, driver, post_input)
-                    post_input.click()
-
-                logging.info('Finished setting text')
-                time.sleep(2)  # wait element to be inserted to DOM
-
-                # upload image to the post
-                if image_upload_enabled:
-                    randint = random.randint(1, 10)
-                    image_path = image_folder_path + get_os_path() + str(randint) + '.jpg'
-                    logging.info('Sending image' + str(randint) + '.jpg')
-
-                    driver.find_element_by_xpath(
-                        '//a[@action-type="multiimage"]').click()
-                    logging.info('Image upload button toggled')
-                    time.sleep(1)
-
-                    driver.find_element_by_xpath(
-                        '//input[contains(@id, "swf_upbtn")]').send_keys(image_path)
-                    logging.info('Image uploaded')
-                    time.sleep(3)  # mandatory sleep, wait for file preview
-
-                post(post_button, driver)  # first attempt
+                post_input.click()
+            except ElementClickInterceptedException:
+                # in case any overlay found, dismiss and reset text
                 handle_pop_up(driver, post_button)
+                set_text(data_content, driver, post_input)
+                post_input.click()
+
+            logging.info('Finished setting text')
+            time.sleep(1)  # wait element to be inserted to DOM
+
+            # upload image to the post
+            if image_upload_enabled:
+                randint = random.randint(1, 10)
+                image_path = image_folder_path + get_os_path() + str(randint) + '.jpg'
+                logging.info('Sending ' + image_path)
+
+                driver.find_element_by_xpath(
+                    '//a[@action-type="multiimage"]').click()
+                logging.info('Image upload button toggled')
+                time.sleep(1)
+
+                driver.find_element_by_xpath(
+                    '//input[contains(@id, "swf_upbtn")]').send_keys(image_path)
+                logging.info('Image uploaded')
+                time.sleep(3)  # mandatory sleep, wait for file preview
+
+            post(post_button, driver)  # first attempt
+            handle_pop_up(driver, post_button)
     except Exception:
         try:
             logging.exception('Unknown exception')
