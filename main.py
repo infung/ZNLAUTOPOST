@@ -73,6 +73,29 @@ def get_os_path():
     return '/'
 
 
+def read_file_with_encoding(filename, encoding):
+    with open(filename, encoding=encoding) as file:
+        try:
+            data = json.load(file)
+            logging.info(filename + ' ingested')
+            return data
+        except ValueError:
+            logging.exception('Failed to parse ' + filename + ' in ' + encoding + ' encoding scheme')
+
+    return None
+
+
+def read_file(filename):
+    data = read_file_with_encoding(filename, 'utf-8')
+    if data is None:
+        logging.info('Trying to parse file as UTF-8 BOM')
+        data = read_file_with_encoding(filename, 'utf-8-sig')
+        if data is None:
+            sys.exit(1)
+
+    return data
+
+
 def generate_znl_text(content):
     znl_text = ''
     try:
@@ -101,7 +124,7 @@ def post(post_button, driver):
         time.sleep(5)  # mandatory sleep, wait for upload
     except ElementClickInterceptedException:
         logging.exception(
-            'strange overlay element found, refreshing page to resume')
+            'strange overlay element found, exiting')
         driver.save_screenshot(str(time.time()) + '.png')
         driver.close()
         sys.exit(1)
@@ -148,32 +171,17 @@ def handle_pop_up(driver, post_button):
 
 
 def main():
-    # test config parsing before starting chromedriver
-    with open('input.json', encoding='raw_unicode_escape') as info:
-        try:
-            data_info = json.load(info)
-            logging.info('Input config ingested')
-        except ValueError:
-            logging.exception('Failed to parse input.json')
-            sys.exit(1)
-
-        num_of_posts = data_info['numOfPosts']
-        image_folder_path = data_info['imageFolderPath']
-        image_upload_enabled = image_folder_path.strip() != ''
-        super_topic = data_info['superTopic']
-        if not image_upload_enabled:
-            logging.info('Fast mode enabled')
-        else:
-            logging.info('Normal mode enabled')
-
-    with open('content.json', encoding='raw_unicode_escape') as content:
-        try:
-            data_content = json.load(content)
-            logging.info('Content ingested, start posting ' +
-                         str(num_of_posts) + ' blog')
-        except ValueError:
-            logging.exception('Failed to parse content.json')
-            sys.exit(1)
+    # test config parsing and get config before starting chromedriver
+    data_content = read_file('content.json')
+    data_info = read_file('input.json')
+    num_of_posts = data_info['numOfPosts']
+    image_folder_path = data_info['imageFolderPath']
+    image_upload_enabled = image_folder_path.strip() != ''
+    super_topic = data_info['superTopic']
+    if not image_upload_enabled:
+        logging.info('Fast mode enabled')
+    else:
+        logging.info('Normal mode enabled')
 
     start_time = time.time()
     driver = WebDriver.chrome()
@@ -217,8 +225,8 @@ def main():
 
             # upload image to the post
             if image_upload_enabled:
-                randint = random.randint(1, 10)
-                image_path = image_folder_path + get_os_path() + str(randint) + '.jpg'
+                img_files = os.listdir(image_folder_path)
+                image_path = image_folder_path + get_os_path() + random.choice(img_files)
                 logging.info('Sending ' + image_path)
 
                 driver.find_element_by_xpath(
