@@ -150,7 +150,7 @@ def handle_pop_up(driver, post_button):
 
             titles = driver.find_elements_by_class_name('S_txt1')
             popup_title = titles[len(titles) - 1]
-            if popup_title.text == '需要验证码':
+            if popup_title.text == '需要验证码' or popup_title.text == '发布内容过于频繁' or popup_title.text == 'Cannot do this operation':
                 logging.error('Account locked')
                 driver.close()
                 sys.exit(1)
