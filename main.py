@@ -7,7 +7,8 @@ import sys
 import time
 
 import selenium.webdriver as webdriver
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException, \
+    InvalidElementStateException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -19,6 +20,12 @@ logging.basicConfig(level=logging.INFO,
                     datefmt='%Y-%m-%d %H:%M:%S',
                     filename='runtime.log',
                     filemode='w')
+
+TERMINATE_STATE = [
+    '需要验证码',
+    '发布内容过于频繁',
+    'Cannot do this operation',
+]
 
 
 class WebDriver:
@@ -139,7 +146,12 @@ def set_text(data_content, driver, post_input):
 
     # make sure the input is active
     time.sleep(1)
-    post_input.clear()
+
+    try:
+        post_input.clear()
+    except InvalidElementStateException:
+        logging.error('Failed to clear text, input in readonly mode')
+
     post_input.send_keys(wb_text)
 
 
@@ -153,7 +165,7 @@ def handle_pop_up(driver, post_button):
 
             titles = driver.find_elements_by_class_name('S_txt1')
             popup_title = titles[len(titles) - 1]
-            if popup_title.text == '需要验证码' or popup_title.text == '发布内容过于频繁' or popup_title.text == 'Cannot do this operation':
+            if popup_title.text in TERMINATE_STATE:
                 logging.error('Account locked')
                 driver.close()
                 sys.exit(1)
@@ -263,4 +275,7 @@ def main():
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception:
+        logging.exception('Failed to start Chrome')
