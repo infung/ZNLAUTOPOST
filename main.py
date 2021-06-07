@@ -102,8 +102,8 @@ def generate_znl_text(content):
     try:
         random_num = str(random.randint(0, 888888)
                          ) if content['withRandNum'] else ''
-        znl_text = (content['tags1'] +
-                    random.choice(content['emoji']) +
+        znl_text = (content['tags1'] + ' ' +
+                    random.choice(content['emoji']) + ' ' +
                     content['tags2'] + '\n' +
                     random.choice(content['znlText']) +
                     random.choice(content['emoji']) +
