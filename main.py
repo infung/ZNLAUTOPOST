@@ -136,6 +136,9 @@ def set_text(data_content, driver, post_input):
     wb_text = generate_znl_text(data_content)
     actions = ActionChains(driver)
     actions.move_to_element(post_input).double_click()
+
+    # make sure the input is active
+    time.sleep(1)
     post_input.clear()
     post_input.send_keys(wb_text)
 
@@ -227,8 +230,10 @@ def main():
             # upload image to the post
             if image_upload_enabled:
                 files = os.listdir(image_folder_path)
+                logging.info('files found: ' + ','.join(files))
                 filtered_img_files = [
-                    img for img in files if '.png' in img or '.jpg' in img or '.jpeg' in img]
+                    img for img in files if
+                    '.png' in img or '.jpg' in img or '.jpeg' in img or '.JPG' in img or '.JPEG' in img or '.PNG' in img]
                 image_path = image_folder_path + get_os_path() + random.choice(filtered_img_files)
                 logging.info('Sending ' + image_path)
 
