@@ -154,8 +154,7 @@ def set_text(data_content, driver, post_input):
 
     post_input.send_keys(wb_text)
 
-
-def handle_pop_up(driver, post_button):
+def handle_pop_up(driver, post_button, post_on_super_topic):
     try:
         # handle popup
         pop_up = driver.find_element_by_xpath(
@@ -163,24 +162,37 @@ def handle_pop_up(driver, post_button):
         if pop_up:
             logging.info('Overlay found, will try to dismiss it')
 
-            titles = driver.find_elements_by_class_name('S_txt1')
-            popup_title = titles[len(titles) - 1]
-            if popup_title.text in TERMINATE_STATE:
-                logging.error('Account locked')
-                driver.close()
-                sys.exit(1)
+            if post_on_super_topic:
+                titles = driver.find_elements_by_class_name('S_txt1')
+                popup_title = titles[len(titles) - 1]
+                if popup_title.text in TERMINATE_STATE:
+                    logging.error('Account locked: ' + popup_title.text)
+                    driver.close()
+                    sys.exit(1)
 
-            button = driver.find_element_by_xpath(
-                '//a[@action-type="ok"]')
-            if button:
-                logging.info(
-                    'Dismiss button found, will try click it')
-                button.click()  # wait for animation fade out
-                logging.info(
-                    'Dismiss button clicked, waiting animation')
-                time.sleep(2)
+                button = driver.find_element_by_xpath(
+                    '//a[@action-type="ok"]')
+                if button:
+                    logging.info(
+                        'Dismiss button found, will try click it')
+                    button.click()  # wait for animation fade out
+                    logging.info(
+                        'Dismiss button clicked, waiting animation')
+                    time.sleep(2)
 
-                post(post_button, driver)  # second attempt after pop up gone
+                    post(post_button, driver)  # second attempt after pop up gone
+            else:
+                titles = driver.find_elements_by_class_name('W_layer_title')
+                if len(titles) > 0:
+                    popup_title = titles[0]
+                    if popup_title.text == '请输入验证码':
+                        logging.error('Account locked: ' + popup_title.text)
+                        driver.close()
+                        sys.exit(1)
+                    else:
+                        logging.error(popup_title.text)
+                        driver.close()
+                        sys.exit(1)
     except NoSuchElementException:
         logging.debug('Overlay element cannot be found')
         pass
@@ -194,6 +206,7 @@ def main():
     image_folder_path = data_info['imageFolderPath']
     image_upload_enabled = image_folder_path.strip() != ''
     super_topic = data_info['superTopic']
+    post_on_super_topic = super_topic.strip() != ''
     if not image_upload_enabled:
         logging.info('Fast mode enabled')
     else:
@@ -209,18 +222,23 @@ def main():
         logging.info('--- %s seconds used on login ---' %
                      (time.time() - login_start_time))
 
-        navigate_start_time = time.time()
-        driver.get(super_topic)
-        wait_element_to_present(driver, 30, (By.ID, 'Pl_Third_Inline__260'))
-        logging.info('--- %s seconds used on navigating to super page ---' %
-                     (time.time() - navigate_start_time))
-        time.sleep(3)  # avoid flakiness on page load
+        if post_on_super_topic:
+            navigate_start_time = time.time()
+            driver.get(super_topic)
+            wait_element_to_present(driver, 30, (By.ID, 'Pl_Third_Inline__260'))
+            logging.info('--- %s seconds used on navigating to super page ---' %
+                        (time.time() - navigate_start_time))
+            time.sleep(3)  # avoid flakiness on page load
 
         inputs = driver.find_elements_by_class_name('W_input')
         post_input = inputs[1]
 
         buttons = driver.find_elements_by_class_name('W_btn_a')
         post_button = buttons[0]
+
+        if not post_on_super_topic:
+            nums = driver.find_elements_by_class_name('num')
+            num_text = nums[0]
 
         # send n posts loop
         for i in range(num_of_posts):
@@ -229,12 +247,18 @@ def main():
             set_text(data_content, driver, post_input)
 
             try:
-                post_input.click()
+                if post_on_super_topic:
+                    post_input.click()
+                else:
+                    num_text.click()
             except ElementClickInterceptedException:
                 # in case any overlay found, dismiss and reset text
-                handle_pop_up(driver, post_button)
+                handle_pop_up(driver, post_button, post_on_super_topic)
                 set_text(data_content, driver, post_input)
-                post_input.click()
+                if post_on_super_topic:
+                    post_input.click()
+                else:
+                    num_text.click()
 
             logging.info('Finished setting text')
             time.sleep(1)  # wait element to be inserted to DOM
@@ -249,18 +273,22 @@ def main():
                 image_path = image_folder_path + get_os_path() + random.choice(filtered_img_files)
                 logging.info('Sending ' + image_path)
 
-                driver.find_element_by_xpath(
-                    '//a[@action-type="multiimage"]').click()
-                logging.info('Image upload button toggled')
-                time.sleep(1)
+                if post_on_super_topic:
+                    driver.find_element_by_xpath(
+                        '//a[@action-type="multiimage"]').click()
+                    logging.info('Image upload button toggled')
+                    time.sleep(1)
 
-                driver.find_element_by_xpath(
-                    '//input[contains(@id, "swf_upbtn")]').send_keys(image_path)
+                    driver.find_element_by_xpath(
+                        '//input[contains(@id, "swf_upbtn")]').send_keys(image_path)
+                else:
+                    img_up = driver.find_element_by_xpath('//div[@class="kind"]/a[@action-type="multiimage"]/div/form/input')
+                    img_up.send_keys(image_path)
+
                 logging.info('Image uploaded')
                 time.sleep(3)  # mandatory sleep, wait for file preview
-
             post(post_button, driver)  # first attempt
-            handle_pop_up(driver, post_button)
+            handle_pop_up(driver, post_button, post_on_super_topic)
     except Exception:
         try:
             logging.exception('Unknown exception')
@@ -270,6 +298,7 @@ def main():
 
         driver.close()
     finally:
+        logging.info('已发送正能量' + str(i+1) + '条')
         logging.info('--- %s seconds used ---' % (time.time() - start_time))
 
 
