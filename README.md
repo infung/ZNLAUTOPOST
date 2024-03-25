@@ -1,5 +1,5 @@
 # Weibo Post Automation
-This is a automated process to send post on Weibo with various customization available.
+This is an automated process to send post on Weibo with various customization available.
 1. num of post
 2. image folder path
 3. super page url
